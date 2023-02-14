@@ -2,8 +2,8 @@ import requests
 import smtplib
 from datetime import datetime, timedelta
 import time
-STOCK = "TSLA"
-COMPANY_NAME = "Tesla Inc"
+import pandas
+
 STOCK_API_KEY = "FRAFWH3EMSX43KGQ"
 NEWS_API_KEY = "ff88c467557b44b29427df585bc71399"
 STOCK_ENDPOINT = "https://www.alphavantage.co/query"
@@ -26,10 +26,9 @@ NEWS_PARAMS = {
     "from": str(days_ago)
 }
 
-news_api= requests.get(url=NEWS_ENDPOINT,params=NEWS_PARAMS)
-news_data= news_api.json()["articles"]
-
 def pull_articles():
+    news_api = requests.get(url=NEWS_ENDPOINT, params=NEWS_PARAMS)
+    news_data = news_api.json()["articles"]
     for arts in news_data:
         source = arts["source"]["name"]
         date = arts["publishedAt"].split("T")[0]
@@ -40,32 +39,52 @@ def pull_articles():
         print("Title: " + title)
         print("URL: " + url)
 
-def send_notification():
-    smtp = smtplib.SMTP()
+def update_btc_data(trk: str, date: str, time: str, price: float, move: str, change: float):
+    # with open(file="btc_data.csv", mode="w") as file:
+    df = pandas.read_csv("btc_data.csv")
+    data = {
+        'Ticker': [trk],
+        "Date": [date],
+        "Time": [time],
+        "Price": [price],
+        "Movement": [move],
+        "% change": [change],
+    }
+    new_data = pandas.DataFrame(data)
+    new_data.to_csv("btc_data.csv",mode="a",index=False,header=False)
 
-last_btc_price = 1
+old_data = pandas.read_csv("btc_data.csv")
+last_row = old_data.tail(1)
+last_btc_price = float(last_row["Price"])
 
 def btc_check():
     global last_btc_price
+    move: str
     stock_api = requests.get(url=STOCK_ENDPOINT, params=STOCK_PARAMS)
     btc_data = stock_api.json()
-    now = float(btc_data["Realtime Currency Exchange Rate"]["5. Exchange Rate"])
-    before = last_btc_price
-    if now/before > 1:
+    ticker = btc_data["Realtime Currency Exchange Rate"]["1. From_Currency Code"]
+    now_price = float(btc_data["Realtime Currency Exchange Rate"]["5. Exchange Rate"])
+    before_price = last_btc_price
+    today = str(datetime.today())
+    date = today.split(" ")[0]
+    time = today.split(" ")[1].split(".")[0]
+    if now_price/before_price > 1:
+        move = "Increase"
         print("Increase")
-    elif now/before < 1:
+    elif now_price/before_price < 1:
+        move = "Decrease"
         print("Decrease")
-    elif now/before == 1:
-        print("Stayed the same")
-    percent_change = abs((now-before)/before)
+    elif now_price/before_price == 1:
+        move = "No Change"
+        print("No Change")
+    percent_change = round(abs((now_price-before_price)/before_price),6)
     if percent_change > .99999:
-        send_notification()
-    print("Current Price: " + str(now))
+        pass
+    update_btc_data(trk= ticker,date=date,time=time, price=now_price, move=move, change=percent_change)
+    print("Current Price: " + str(now_price))
     print("Last Price: " + str(last_btc_price))
-    last_btc_price = now
+    last_btc_price = now_price
 
 while True:
     btc_check()
-    time.sleep(60*15)
-
-#print(btc_price)
+    time.sleep(60*5)
