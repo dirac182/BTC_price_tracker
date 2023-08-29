@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 import time
 import pandas
 
-STOCK_API_KEY = "FRAFWH3EMSX43KGQ"
-NEWS_API_KEY = "ff88c467557b44b29427df585bc71399"
+STOCK_API_KEY = ""
+NEWS_API_KEY = ""
 STOCK_ENDPOINT = "https://www.alphavantage.co/query"
 NEWS_ENDPOINT = "https://newsapi.org/v2/everything"
 
